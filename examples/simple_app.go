@@ -3,75 +3,81 @@ package main
 import (
 	"fmt"
 	"github.com/routis819/termapp"
+	"strings"
 )
 
-// RootStage: The main entry point of the app.
-type RootStage struct{}
+// RootStage embeds BaseStage to inherit default lifecycle methods.
+type RootStage struct {
+	termapp.BaseStage
+	lastResult string
+}
 
 func (s *RootStage) Prompt() string {
-	return "root> "
+	prompt := "root> "
+	if s.lastResult != "" {
+		prompt = fmt.Sprintf("root(last:%s)> ", s.lastResult)
+	}
+	return prompt
 }
 
-func (s *RootStage) OnEnter(app *termapp.App) error {
-	fmt.Println("[RootStage] Entering... (Initializing state)")
-	return nil
-}
-
-func (s *RootStage) OnExit(app *termapp.App) error {
-	fmt.Println("[RootStage] Exiting...")
+// OnResult is called when a child stage pops and returns data.
+func (s *RootStage) OnResult(app *termapp.App, result interface{}) error {
+	if res, ok := result.(string); ok {
+		s.lastResult = res
+		fmt.Printf("[RootStage] Received result from child: %s\n", res)
+	}
 	return nil
 }
 
 func (s *RootStage) Commands() map[string]termapp.Command {
 	return map[string]termapp.Command{
-		"enter": {
-			Description: "Enter the sub-stage",
+		"select": {
+			Description: "Go to selection stage",
 			Handler: func(app *termapp.App, args []string) error {
-				fmt.Println("Navigating to SubStage...")
-				return app.Push(&SubStage{})
+				return app.Push(&SelectionStage{})
 			},
 		},
-		"hello": {
-			Description: "Say hello",
+		"exit": {
+			Description: "Exit the app",
 			Handler: func(app *termapp.App, args []string) error {
-				fmt.Println("Hello from RootStage!")
-				return nil
+				fmt.Println("Goodbye!")
+				return nil // In a real app, you might use a flag to stop the loop
 			},
 		},
 	}
 }
 
-// SubStage: A nested context with different commands.
-type SubStage struct{}
-
-func (s *SubStage) Prompt() string {
-	return "sub-stage# "
+// SelectionStage allows user to pick a value.
+type SelectionStage struct {
+	termapp.BaseStage
 }
 
-func (s *SubStage) OnEnter(app *termapp.App) error {
-	fmt.Println("[SubStage] Welcome! (Stage-specific setup)")
+func (s *SelectionStage) Prompt() string {
+	return "choose-color [red/green/blue]> "
+}
+
+func (s *SelectionStage) OnDestroy(app *termapp.App) error {
+	fmt.Println("[SelectionStage] Cleaning up resources before destruction...")
 	return nil
 }
 
-func (s *SubStage) OnExit(app *termapp.App) error {
-	fmt.Println("[SubStage] Goodbye! (Cleaning up)")
-	return nil
-}
-
-func (s *SubStage) Commands() map[string]termapp.Command {
+func (s *SelectionStage) Commands() map[string]termapp.Command {
 	return map[string]termapp.Command{
-		"back": {
-			Description: "Go back to the previous stage",
+		"pick": {
+			Description: "Pick a color and return",
 			Handler: func(app *termapp.App, args []string) error {
-				fmt.Println("Returning to previous stage...")
-				return app.Pop()
+				if len(args) == 0 {
+					return fmt.Errorf("please provide a color")
+				}
+				color := strings.ToLower(args[0])
+				fmt.Printf("[SelectionStage] Picking %s and returning to root...\n", color)
+				return app.Pop(color) // Pass the result back to RootStage
 			},
 		},
-		"secret": {
-			Description: "A secret command only in SubStage",
+		"cancel": {
+			Description: "Cancel and return with no result",
 			Handler: func(app *termapp.App, args []string) error {
-				fmt.Println("You found the secret! Arguments passed:", args)
-				return nil
+				return app.Pop(nil)
 			},
 		},
 	}
@@ -80,9 +86,11 @@ func (s *SubStage) Commands() map[string]termapp.Command {
 func main() {
 	app := termapp.NewApp(&RootStage{})
 
-	fmt.Println("--- termapp Lifecycle & Navigation Example ---")
-	fmt.Println("Commands are now mapped directly to handlers with access to the App instance.")
-	fmt.Println("----------------------------------------------")
+	fmt.Println("--- termapp Enhanced Lifecycle Example ---")
+	fmt.Println("1. Type 'select' to enter SelectionStage.")
+	fmt.Println("2. In SelectionStage, type 'pick [color]' (e.g., 'pick red').")
+	fmt.Println("3. Watch RootStage receive the result and update its prompt!")
+	fmt.Println("------------------------------------------")
 
 	if err := app.Run(); err != nil {
 		fmt.Printf("Error: %v\n", err)

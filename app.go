@@ -16,7 +16,18 @@ type Stage interface {
 	Commands() map[string]Command
 	OnEnter(app *App) error
 	OnExit(app *App) error
+	OnDestroy(app *App) error
+	OnResult(app *App, result interface{}) error
 }
+
+// BaseStage provides default empty implementations for lifecycle hooks.
+// Embed this in your stage struct to avoid boilerplate.
+type BaseStage struct{}
+
+func (s *BaseStage) OnEnter(app *App) error                       { return nil }
+func (s *BaseStage) OnExit(app *App) error                        { return nil }
+func (s *BaseStage) OnDestroy(app *App) error                     { return nil }
+func (s *BaseStage) OnResult(app *App, result interface{}) error { return nil }
 
 // Command maps a user input to a function.
 type Command struct {
@@ -60,8 +71,8 @@ func (a *App) Push(s Stage) error {
 	return nil
 }
 
-// Pop removes the current stage and returns to the previous one.
-func (a *App) Pop() error {
+// Pop removes the current stage and returns to the previous one, passing a result.
+func (a *App) Pop(result interface{}) error {
 	if len(a.stack) <= 1 {
 		return fmt.Errorf("already at the root stage")
 	}
@@ -70,11 +81,17 @@ func (a *App) Pop() error {
 	if err := current.OnExit(a); err != nil {
 		return err
 	}
+	if err := current.OnDestroy(a); err != nil {
+		return err
+	}
 
 	a.stack = a.stack[:len(a.stack)-1]
 
 	next := a.Current()
 	if next != nil {
+		if err := next.OnResult(a, result); err != nil {
+			return err
+		}
 		if err := next.OnEnter(a); err != nil {
 			return err
 		}
