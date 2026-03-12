@@ -10,4 +10,9 @@
 ## Design Patterns
 - **Stage Pattern**: Each app state is an implementation of a `Stage` interface.
 - **Stack Pattern**: Navigation is managed via a Last-In-First-Out (LIFO) stack of Stages.
+- **Lifecycle Events**: Each stage implements standard lifecycle hooks:
+    - `OnEnter`: Called when the stage becomes the active top of the stack.
+    - `OnExit`: Called when the stage is no longer the top (either via Push or Pop).
+    - `OnDestroy`: Called when a stage is permanently removed from the stack (Pop).
+    - `OnResult`: Called when a previous stage (pushed onto the current one) is Popped and returns data.
 - **Command Dispatcher**: Input is tokenized and dispatched to stage-specific command maps.

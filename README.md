@@ -23,6 +23,11 @@ A **Stage** represents a specific state of the application (e.g., `LoginStage`, 
 - **Prompt**: What the user sees (e.g., `admin@dashboard> `).
 - **Commands**: A localized set of available actions and their handlers.
 - **Auto-completion**: A list of suggestions relevant only to that stage.
+- **Lifecycle Events**: Hooks to manage state transitions:
+    - `OnEnter`: Called when the stage becomes the active top of the stack.
+    - `OnExit`: Called when the stage is no longer the top.
+    - `OnDestroy`: Called when a stage is permanently removed from the stack.
+    - `OnResult`: Called when a returning stage passes data back to this one.
 
 ### 2. Navigation Stack
 The framework maintains a stack of Stages.
@@ -31,39 +36,41 @@ The framework maintains a stack of Stages.
 - **Home**: Clear the stack and return to the root Stage.
 
 ### 3. Context-Aware Completion
-Unlike static completion, **termapp** dynamically reconfigures the `readline` completer whenever a Stage transition occurs. This ensures that users are only suggested commands that are valid in the current context.
+Unlike static completion, **termapp** dynamically reconfigures the `liner` completer whenever a Stage transition occurs. This ensures that users are only suggested commands that are valid in the current context.
 
 ---
 
-## 🛠 Planned Core API
+## 🛠 Core API
 
 ```go
 // Stage defines the behavior for a specific application state.
 type Stage interface {
     Prompt() string
     Commands() map[string]Command
-    OnEnter() error
-    OnExit() error
+    OnEnter(app *App) error
+    OnExit(app *App) error
+    OnDestroy(app *App) error
+    OnResult(app *App, result interface{}) error
 }
 
 // Command maps a user input to a function.
 type Command struct {
     Description string
-    Handler     func(args []string) error
+    Handler     func(app *App, args []string) error
 }
 
-// Manager orchestrates the lifecycle and the readline loop.
-type Manager struct {
+// App orchestrates the lifecycle and the interaction loop.
+type App struct {
     stack []Stage
-    rl    *readline.Instance
+    // ... internals
 }
 ```
 
 ## 🚀 Current Status
-- [x] Basic `readline` loop integration.
+- [x] Basic `liner` loop integration.
 - [x] POSIX-compliant tokenization for command arguments.
-- [ ] Centralized Stage/Manager architecture.
-- [ ] Dynamic auto-completion provider.
+- [x] Centralized Stage/App architecture.
+- [x] Dynamic auto-completion provider.
 - [ ] Built-in "Help" and "Exit" command management.
 
 ## 📝 Usage Example (Mockup)
