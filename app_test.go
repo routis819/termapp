@@ -173,6 +173,11 @@ func TestTokenize(t *testing.T) {
 			input:    `line \"escaped\"`,
 			expected: []string{"line", `"escaped"`},
 		},
+		{
+			name:     "empty quotes",
+			input:    `line "" ''`,
+			expected: []string{"line", "", ""},
+		},
 	}
 
 	for _, tt := range tests {

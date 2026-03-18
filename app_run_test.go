@@ -45,15 +45,15 @@ func (m *mockInputter) Close() error {
 
 type flexibleMockStage struct {
 	BaseStage
-	prompt     string
-	commands   map[string]Command
-	onEnter    func(app *App) error
-	onExit     func(app *App) error
-	onResult   func(app *App, result any) error
-	onDestroy  func(app *App) error
+	prompt    string
+	commands  map[string]Command
+	onEnter   func(app *App) error
+	onExit    func(app *App) error
+	onResult  func(app *App, result any) error
+	onDestroy func(app *App) error
 }
 
-func (f *flexibleMockStage) Prompt() string                { return f.prompt }
+func (f *flexibleMockStage) Prompt() string               { return f.prompt }
 func (f *flexibleMockStage) Commands() map[string]Command { return f.commands }
 func (f *flexibleMockStage) OnEnter(app *App) error {
 	if f.onEnter != nil {
