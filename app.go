@@ -14,20 +14,21 @@ import (
 type Stage interface {
 	Prompt() string
 	Commands() map[string]Command
+
 	OnEnter(app *App) error
 	OnExit(app *App) error
 	OnDestroy(app *App) error
-	OnResult(app *App, result interface{}) error
+	OnResult(app *App, result any) error
 }
 
 // BaseStage provides default empty implementations for lifecycle hooks.
 // Embed this in your stage struct to avoid boilerplate.
 type BaseStage struct{}
 
-func (s *BaseStage) OnEnter(app *App) error                       { return nil }
-func (s *BaseStage) OnExit(app *App) error                        { return nil }
-func (s *BaseStage) OnDestroy(app *App) error                     { return nil }
-func (s *BaseStage) OnResult(app *App, result interface{}) error { return nil }
+func (s *BaseStage) OnEnter(app *App) error              { return nil }
+func (s *BaseStage) OnExit(app *App) error               { return nil }
+func (s *BaseStage) OnDestroy(app *App) error            { return nil }
+func (s *BaseStage) OnResult(app *App, result any) error { return nil }
 
 // Command maps a user input to a function.
 type Command struct {
@@ -72,7 +73,7 @@ func (a *App) Push(s Stage) error {
 }
 
 // Pop removes the current stage and returns to the previous one, passing a result.
-func (a *App) Pop(result interface{}) error {
+func (a *App) Pop(result any) error {
 	if len(a.stack) <= 1 {
 		return fmt.Errorf("already at the root stage")
 	}
@@ -119,20 +120,7 @@ func (a *App) Run() error {
 	}
 
 	// Configure dynamic completion
-	a.line.SetCompleter(func(line string) []string {
-		curr := a.Current()
-		if curr == nil {
-			return nil
-		}
-
-		var suggestions []string
-		for name := range curr.Commands() {
-			if strings.HasPrefix(name, strings.ToLower(line)) {
-				suggestions = append(suggestions, name)
-			}
-		}
-		return suggestions
-	})
+	a.line.SetCompleter(a.completer)
 
 	for {
 		curr := a.Current()
@@ -154,23 +142,75 @@ func (a *App) Run() error {
 		}
 
 		a.line.AppendHistory(input)
-		tokens := tokenize(input)
-		if len(tokens) == 0 {
-			continue
+		exit, err := a.processCommand(input)
+		if exit {
+			return err
 		}
+	}
+	return nil
+}
 
-		cmdName := tokens[0]
-		args := tokens[1:]
+func (a *App) completer(line string) []string {
+	curr := a.Current()
+	var suggestions []string
 
+	globalCmds := []string{"help", "exit", "quit"}
+	for _, cmd := range globalCmds {
+		if strings.HasPrefix(cmd, strings.ToLower(line)) {
+			suggestions = append(suggestions, cmd)
+		}
+	}
+
+	if curr != nil {
+		for name := range curr.Commands() {
+			if strings.HasPrefix(name, strings.ToLower(line)) {
+				suggestions = append(suggestions, name)
+			}
+		}
+	}
+	return suggestions
+}
+
+func (a *App) processCommand(input string) (bool, error) {
+	tokens := tokenize(input)
+	if len(tokens) == 0 {
+		return false, nil
+	}
+
+	cmdName := strings.ToLower(tokens[0])
+	args := tokens[1:]
+
+	curr := a.Current()
+
+	// Global commands
+	switch cmdName {
+	case "help":
+		fmt.Println("Global commands:")
+		fmt.Println("  help - Show this help message")
+		fmt.Println("  exit, quit - Exit the application")
+		if curr != nil && len(curr.Commands()) > 0 {
+			fmt.Println("\nStage commands:")
+			for name, cmd := range curr.Commands() {
+				fmt.Printf("  %s - %s\n", name, cmd.Description)
+			}
+		}
+		return false, nil
+	case "exit", "quit":
+		fmt.Println("Exiting...")
+		return true, nil
+	}
+
+	if curr != nil {
 		if cmd, ok := curr.Commands()[cmdName]; ok {
 			if err := cmd.Handler(a, args); err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			}
-		} else {
-			fmt.Printf("Unknown command: %s. Type 'help' if available.\n", cmdName)
+			return false, nil
 		}
 	}
-	return nil
+
+	fmt.Printf("Unknown command: %s. Type 'help' if available.\n", cmdName)
+	return false, nil
 }
 
 func tokenize(line string) []string {
