@@ -18,8 +18,8 @@
     - [x] Task: Implement: Provide terminating input in tests. (84f2978)
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Lifecycle and Termination Tests' (e0f72fd)
 
-## Phase 3: Coverage and Refinement
+## Phase 3: Coverage and Refinement [checkpoint: bc2b7fc]
 - [x] Task: Verify and reach >80% coverage. (e1df2e2)
     - [x] Task: Write Tests: Add tests for any uncovered branches in `Run`, `completer`, and `processCommand`. (e1df2e2)
     - [x] Task: Implement: Run `go test -cover` and address gaps. (e1df2e2)
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Coverage and Refinement' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Coverage and Refinement' (bc2b7fc)
