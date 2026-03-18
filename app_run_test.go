@@ -38,10 +38,24 @@ type flexibleMockStage struct {
 	BaseStage
 	prompt   string
 	commands map[string]Command
+	onEnter  func(app *App) error
+	onExit   func(app *App) error
 }
 
 func (f *flexibleMockStage) Prompt() string                { return f.prompt }
 func (f *flexibleMockStage) Commands() map[string]Command { return f.commands }
+func (f *flexibleMockStage) OnEnter(app *App) error {
+	if f.onEnter != nil {
+		return f.onEnter(app)
+	}
+	return nil
+}
+func (f *flexibleMockStage) OnExit(app *App) error {
+	if f.onExit != nil {
+		return f.onExit(app)
+	}
+	return nil
+}
 
 func TestAppRun_Basic(t *testing.T) {
 	mockS := &flexibleMockStage{prompt: "> "}
@@ -86,5 +100,29 @@ func TestAppRun_CommandDispatching(t *testing.T) {
 
 	if !called {
 		t.Error("expected command handler to be called")
+	}
+}
+
+func TestAppRun_LifecycleHooks(t *testing.T) {
+	onEnterCalled := false
+	mockS := &flexibleMockStage{
+		prompt: "> ",
+		onEnter: func(app *App) error {
+			onEnterCalled = true
+			return nil
+		},
+	}
+	inputter := &mockInputter{
+		inputs: []string{"exit"},
+	}
+	app := NewAppWithInputter(mockS, inputter)
+
+	err := app.Run()
+	if err != nil {
+		t.Fatalf("App.Run failed: %v", err)
+	}
+
+	if !onEnterCalled {
+		t.Error("expected OnEnter to be called")
 	}
 }
