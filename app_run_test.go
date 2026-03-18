@@ -27,7 +27,6 @@ func (m *mockInputter) AppendHistory(item string) {
 }
 
 func (m *mockInputter) SetCompleter(f liner.Completer) {
-	// Not needed for basic run test
 }
 
 func (m *mockInputter) Close() error {
@@ -35,8 +34,17 @@ func (m *mockInputter) Close() error {
 	return nil
 }
 
+type flexibleMockStage struct {
+	BaseStage
+	prompt   string
+	commands map[string]Command
+}
+
+func (f *flexibleMockStage) Prompt() string                { return f.prompt }
+func (f *flexibleMockStage) Commands() map[string]Command { return f.commands }
+
 func TestAppRun_Basic(t *testing.T) {
-	mockS := &mockStage{}
+	mockS := &flexibleMockStage{prompt: "> "}
 	inputter := &mockInputter{
 		inputs: []string{"help", "exit"},
 	}
@@ -50,7 +58,33 @@ func TestAppRun_Basic(t *testing.T) {
 	if !inputter.closed {
 		t.Error("expected inputter to be closed")
 	}
+}
 
-	// Verify help was called (we capture output in app_test.go's captureStdout but app.Run prints to stdout)
-	// We might need to refactor app to allow injecting an output writer too if we want to verify stdout.
+func TestAppRun_CommandDispatching(t *testing.T) {
+	called := false
+	mockS := &flexibleMockStage{
+		prompt: "> ",
+		commands: map[string]Command{
+			"testcmd": {
+				Description: "A test command",
+				Handler: func(app *App, args []string) error {
+					called = true
+					return nil
+				},
+			},
+		},
+	}
+	inputter := &mockInputter{
+		inputs: []string{"testcmd", "exit"},
+	}
+	app := NewAppWithInputter(mockS, inputter)
+
+	err := app.Run()
+	if err != nil {
+		t.Fatalf("App.Run failed: %v", err)
+	}
+
+	if !called {
+		t.Error("expected command handler to be called")
+	}
 }
