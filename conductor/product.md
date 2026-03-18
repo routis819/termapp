@@ -12,3 +12,4 @@
 2.  **Command-Handler Mapping**: Automatically route parsed input to stage-specific handlers.
 3.  **Dynamic Completion**: Automatically update the `readline`/`liner` completer based on the active stage.
 4.  **Lifecycle Management**: Provide hooks for entering and exiting stages (e.g., `OnEnter`, `OnExit`).
+5.  **Global Command Handling**: Provide consistent, framework-level support for global commands like `help`, `exit`, and `quit`.

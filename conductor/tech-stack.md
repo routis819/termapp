@@ -16,3 +16,4 @@
     - `OnDestroy`: Called when a stage is permanently removed from the stack (Pop).
     - `OnResult`: Called when a previous stage (pushed onto the current one) is Popped and returns data.
 - **Command Dispatcher**: Input is tokenized and dispatched to stage-specific command maps.
+- **Global Command Interception**: The framework intercepts specific global commands (e.g., `help`, `exit`, `quit`) before dispatching stage-specific commands, ensuring a consistent user experience.
