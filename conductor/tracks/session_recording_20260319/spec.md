@@ -4,9 +4,13 @@
 This feature introduces a comprehensive session recording and framework logging system for `termapp`. It allows users to capture full sessions (inputs and outputs) and framework-level events (stage transitions, errors) into a structured JSONL (JSON Lines) file on disk. Recording can be initiated via global commands or application-level CLI flags.
 
 ## Functional Requirements
+- **Structured Output Buffering**:
+    - Provide a `StructuredWriter` interface (compatible with `io.Writer`) for stages to use for output.
+    - All output through this writer is automatically "tagged" with metadata (timestamp, StageID).
+    - This writer serves as the primary "Text Stream" orchestration point for the framework.
 - **Session Recording**:
     - Capture all user inputs received via the `CommandInputter`.
-    - Capture all application outputs.
+    - Capture all application outputs emitted through the `StructuredWriter`.
     - Store each interaction as a discrete JSON object on a new line (JSONL format).
 - **Framework Logging**:
     - Log framework-level events, including:

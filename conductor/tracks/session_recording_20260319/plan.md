@@ -1,13 +1,16 @@
 # Implementation Plan: Session Recording and Framework Logging (track-20260319-session-recording)
 
-## Phase 1: Core Logging Infrastructure
+## Phase 1: Core Logging & Output Infrastructure
 - [ ] Task: Define JSON log entry structures and basic Logger.
     - [ ] Write Tests: Verify `Logger` can write and flush a JSONL entry to a file.
     - [ ] Implement: Create `logger.go` with JSON structs and `FileLogger` implementation.
-- [ ] Task: Integrate `Logger` into `App` struct.
-    - [ ] Write Tests: Verify `App` can initialize with or without a logger.
-    - [ ] Implement: Update `App` and `NewApp` to include optional `Logger` support.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Core Logging Infrastructure' (Protocol in workflow.md)
+- [ ] Task: Implement `StructuredWriter` for stage output orchestration.
+    - [ ] Write Tests: Verify `StructuredWriter` captures output and attaches metadata (StageID, Timestamp).
+    - [ ] Implement: Create `writer.go` with `StructuredWriter` implementation.
+- [ ] Task: Integrate `Logger` and `StructuredWriter` into `App` struct.
+    - [ ] Write Tests: Verify `App` can initialize with or without logging/structured output.
+    - [ ] Implement: Update `App` and `NewApp` to include optional `Logger` and default `StructuredWriter` (stdout fallback).
+- [ ] Task: Conductor - User Manual Verification 'Phase 1: Core Logging & Output Infrastructure' (Protocol in workflow.md)
 
 ## Phase 2: Framework Event Logging
 - [ ] Task: Log stage transitions (Push/Pop).
@@ -22,9 +25,9 @@
 - [ ] Task: Intercept and log user inputs.
     - [ ] Write Tests: Verify all inputs from `CommandInputter` are logged.
     - [ ] Implement: Update `App.Run` to log input tokens.
-- [ ] Task: Capture and log application outputs.
-    - [ ] Write Tests: Verify that output from handlers (e.g., printed text) is captured and logged.
-    - [ ] Implement: Introduce an output wrapper or interceptor for capturing stage responses.
+- [ ] Task: Log application outputs via `StructuredWriter`.
+    - [ ] Write Tests: Verify that output written to `StructuredWriter` generates log entries.
+    - [ ] Implement: Configure `StructuredWriter` to pipe output to the active `Logger` when recording.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Session Recording (Inputs/Outputs)' (Protocol in workflow.md)
 
 ## Phase 4: Global Commands and CLI Flags
