@@ -84,9 +84,17 @@ type Command struct {
 	Handler     func(app *App, args []string) error
 }
 
-// App orchestrates the lifecycle and the liner loop.
+// CommandInputter defines the operations for command-line input.
+type CommandInputter interface {
+	Prompt(prompt string) (string, error)
+	AppendHistory(item string)
+	SetCompleter(f liner.Completer)
+	Close() error
+}
+
+// App orchestrates the lifecycle and the input loop.
 type App struct {
-	line  *liner.State
+	line  CommandInputter
 	stack []Stage
 }
 
@@ -98,6 +106,14 @@ func NewApp(root Stage) *App {
 
 	return &App{
 		line:  l,
+		stack: []Stage{root},
+	}
+}
+
+// NewAppWithInputter creates a new termapp application with a custom inputter.
+func NewAppWithInputter(root Stage, inputter CommandInputter) *App {
+	return &App{
+		line:  inputter,
 		stack: []Stage{root},
 	}
 }
@@ -266,7 +282,7 @@ func tokenize(line string) []string {
 	var currentToken strings.Builder
 	inSingleQuote := false
 	inDoubleQuote := false
-	escaped := false
+	escaped, inToken := false, false
 
 	line = strings.TrimSpace(line)
 	if line == "" {
@@ -277,36 +293,42 @@ func tokenize(line string) []string {
 		if escaped {
 			currentToken.WriteRune(r)
 			escaped = false
+			inToken = true
 			continue
 		}
 
 		if r == '\\' {
 			escaped = true
+			inToken = true
 			continue
 		}
 
 		if r == '\'' && !inDoubleQuote {
 			inSingleQuote = !inSingleQuote
+			inToken = true
 			continue
 		}
 
 		if r == '"' && !inSingleQuote {
 			inDoubleQuote = !inDoubleQuote
+			inToken = true
 			continue
 		}
 
 		if (r == ' ' || r == '\t') && !inSingleQuote && !inDoubleQuote {
-			if currentToken.Len() > 0 {
+			if inToken {
 				tokens = append(tokens, currentToken.String())
 				currentToken.Reset()
+				inToken = false
 			}
 			continue
 		}
 
+		inToken = true
 		currentToken.WriteRune(r)
 	}
 
-	if currentToken.Len() > 0 {
+	if inToken {
 		tokens = append(tokens, currentToken.String())
 	}
 
