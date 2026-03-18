@@ -1,0 +1,7 @@
+{
+  "id": "hierarchical_completion_20260319",
+  "title": "Hierarchical Autocompletion with Quoted String Support",
+  "status": "planned",
+  "created_at": "2026-03-19",
+  "labels": ["feature", "framework", "completion"]
+}
