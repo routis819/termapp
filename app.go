@@ -53,7 +53,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/peterh/liner"
@@ -263,10 +262,53 @@ func (a *App) processCommand(input string) (bool, error) {
 }
 
 func tokenize(line string) []string {
+	var tokens []string
+	var currentToken strings.Builder
+	inSingleQuote := false
+	inDoubleQuote := false
+	escaped := false
+
 	line = strings.TrimSpace(line)
 	if line == "" {
 		return nil
 	}
-	re := regexp.MustCompile(`\s+`)
-	return re.Split(line, -1)
+
+	for _, r := range line {
+		if escaped {
+			currentToken.WriteRune(r)
+			escaped = false
+			continue
+		}
+
+		if r == '\\' {
+			escaped = true
+			continue
+		}
+
+		if r == '\'' && !inDoubleQuote {
+			inSingleQuote = !inSingleQuote
+			continue
+		}
+
+		if r == '"' && !inSingleQuote {
+			inDoubleQuote = !inDoubleQuote
+			continue
+		}
+
+		if (r == ' ' || r == '\t') && !inSingleQuote && !inDoubleQuote {
+			if currentToken.Len() > 0 {
+				tokens = append(tokens, currentToken.String())
+				currentToken.Reset()
+			}
+			continue
+		}
+
+		currentToken.WriteRune(r)
+	}
+
+	if currentToken.Len() > 0 {
+		tokens = append(tokens, currentToken.String())
+	}
+
+	return tokens
 }

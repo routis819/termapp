@@ -137,30 +137,50 @@ func TestCompleter(t *testing.T) {
 	}
 }
 
-func TestTokenizerSpace(t *testing.T) {
-	line := "    line "
-	tokens := tokenize(line)
-
-	if len(tokens) != 1 {
-		t.FailNow()
+func TestTokenize(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{
+			name:     "spaces only",
+			input:    "    line ",
+			expected: []string{"line"},
+		},
+		{
+			name:     "multiple args",
+			input:    "    line arg1     ",
+			expected: []string{"line", "arg1"},
+		},
+		{
+			name:     "double quotes",
+			input:    `line "arg with spaces" arg2`,
+			expected: []string{"line", "arg with spaces", "arg2"},
+		},
+		{
+			name:     "single quotes",
+			input:    `line 'arg with spaces' arg2`,
+			expected: []string{"line", "arg with spaces", "arg2"},
+		},
+		{
+			name:     "mixed quotes",
+			input:    `line "single ' quote inside" 'double " quote inside'`,
+			expected: []string{"line", "single ' quote inside", `double " quote inside`},
+		},
+		{
+			name:     "escaped quotes",
+			input:    `line \"escaped\"`,
+			expected: []string{"line", `"escaped"`},
+		},
 	}
 
-	var arr0 [1]string
-	copy(arr0[:], tokens)
-	if [1]string{"line"} != arr0 {
-		t.Fail()
-	}
-
-	line = "    line arg1     "
-	tokens = tokenize(line)
-
-	if len(tokens) != 2 {
-		t.Fail()
-	}
-
-	var arr1 [2]string
-	copy(arr1[:], tokens)
-	if [2]string{"line", "arg1"} != arr1 {
-		t.Fail()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tokens := tokenize(tt.input)
+			if !reflect.DeepEqual(tokens, tt.expected) {
+				t.Errorf("tokenize(%q) = %v, want %v", tt.input, tokens, tt.expected)
+			}
+		})
 	}
 }
