@@ -17,3 +17,5 @@
     - `OnResult`: Called when a previous stage (pushed onto the current one) is Popped and returns data.
 - **Command Dispatcher**: Input is tokenized and dispatched to stage-specific command maps.
 - **Global Command Interception**: The framework intercepts specific global commands (e.g., `help`, `exit`, `quit`) before dispatching stage-specific commands, ensuring a consistent user experience.
+- **Pluggable Inputter**: The framework uses a `CommandInputter` interface for terminal interaction, allowing for easy mocking and testing of the core interaction loop.
+- **Test-Driven Design**: The core framework maintains high test coverage (>80%) through the use of mock stages and mock inputters to verify complex interaction flows.
