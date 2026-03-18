@@ -13,9 +13,9 @@
 - [x] Task: Verify lifecycle hooks are called during the `Run` loop. (e9fc934)
     - [x] Task: Write Tests: Check if `OnEnter` of the root stage is called. (e9fc934)
     - [x] Task: Implement: Update mock stage to record hook calls. (e9fc934)
-- [ ] Task: Test application termination.
-    - [ ] Task: Write Tests: Verify `exit` command and `io.EOF` terminate the loop.
-    - [ ] Task: Implement: Provide terminating input in tests.
+- [x] Task: Test application termination. (84f2978)
+    - [x] Task: Write Tests: Verify `exit` command and `io.EOF` terminate the loop. (84f2978)
+    - [x] Task: Implement: Provide terminating input in tests. (84f2978)
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Lifecycle and Termination Tests' (Protocol in workflow.md)
 
 ## Phase 3: Coverage and Refinement
