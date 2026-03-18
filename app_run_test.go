@@ -126,3 +126,29 @@ func TestAppRun_LifecycleHooks(t *testing.T) {
 		t.Error("expected OnEnter to be called")
 	}
 }
+
+func TestAppRun_Termination(t *testing.T) {
+	t.Run("EOF", func(t *testing.T) {
+		mockS := &flexibleMockStage{prompt: "> "}
+		inputter := &mockInputter{
+			inputs: []string{}, // Immediately EOF
+		}
+		app := NewAppWithInputter(mockS, inputter)
+		err := app.Run()
+		if err != nil {
+			t.Errorf("expected no error on EOF, got %v", err)
+		}
+	})
+
+	t.Run("ExitCommand", func(t *testing.T) {
+		mockS := &flexibleMockStage{prompt: "> "}
+		inputter := &mockInputter{
+			inputs: []string{"exit"},
+		}
+		app := NewAppWithInputter(mockS, inputter)
+		err := app.Run()
+		if err != nil {
+			t.Errorf("expected no error on exit, got %v", err)
+		}
+	})
+}
