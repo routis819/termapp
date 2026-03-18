@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Implement unit tests for the core interaction loop in App.Run**
+- [x] **Track: Implement unit tests for the core interaction loop in App.Run**
   *Link: [./tracks/core_tests_20260319/](./tracks/core_tests_20260319/)*
