@@ -9,14 +9,14 @@
     - [x] Task: Implement: Ensure the test setup correctly feeds input and captures output. (5a05def)
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Test Infrastructure and Basic Loop Tests' (0e897a4)
 
-## Phase 2: Lifecycle and Termination Tests
+## Phase 2: Lifecycle and Termination Tests [checkpoint: e0f72fd]
 - [x] Task: Verify lifecycle hooks are called during the `Run` loop. (e9fc934)
     - [x] Task: Write Tests: Check if `OnEnter` of the root stage is called. (e9fc934)
     - [x] Task: Implement: Update mock stage to record hook calls. (e9fc934)
 - [x] Task: Test application termination. (84f2978)
     - [x] Task: Write Tests: Verify `exit` command and `io.EOF` terminate the loop. (84f2978)
     - [x] Task: Implement: Provide terminating input in tests. (84f2978)
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Lifecycle and Termination Tests' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Lifecycle and Termination Tests' (e0f72fd)
 
 ## Phase 3: Coverage and Refinement
 - [ ] Task: Verify and reach >80% coverage.
