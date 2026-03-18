@@ -1,9 +1,9 @@
 # Implementation Plan: Core Interaction Loop Tests
 
 ## Phase 1: Test Infrastructure and Basic Loop Tests
-- [ ] Task: Set up test infrastructure for mocking `liner` state.
-    - [ ] Task: Write Tests: Create a test that attempts to run `App.Run` with a mocked input.
-    - [ ] Task: Implement: Refactor `App` or use an interface if necessary to allow injecting a mocked `liner.State` or input stream.
+- [x] Task: Set up test infrastructure for mocking `liner` state. (b779543)
+    - [x] Task: Write Tests: Create a test that attempts to run `App.Run` with a mocked input. (b779543)
+    - [x] Task: Implement: Refactor `App` or use an interface if necessary to allow injecting a mocked `liner.State` or input stream. (b779543)
 - [ ] Task: Test basic command dispatching in the loop.
     - [ ] Task: Write Tests: Verify that a command entered in the loop calls the expected handler.
     - [ ] Task: Implement: Ensure the test setup correctly feeds input and captures output.
