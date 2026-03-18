@@ -1,3 +1,52 @@
+// Package termapp provides a framework for building stateful, interactive terminal applications.
+//
+// It is designed to bridge the gap between low-level Readline wrappers and heavy TUI
+// frameworks. It provides a structured, "stage-based" approach to build interactive shells.
+//
+// # Key Concepts
+//
+// Stage:
+// A Stage represents a specific state or context of the application (e.g., Login, Dashboard).
+// Each stage defines its own prompt, available commands, and lifecycle hooks.
+//
+// Back Stack:
+// Navigation is handled via a stack of Stages. You can Push a new stage onto the stack
+// to enter a new context, and Pop the current stage to return to the previous context,
+// optionally passing a result back.
+//
+// Lifecycle Hooks:
+// Stages can implement OnEnter, OnExit, OnDestroy, and OnResult hooks to manage setup,
+// teardown, and data passing during navigation. The BaseStage struct can be embedded
+// to provide empty default implementations for these hooks, reducing boilerplate.
+//
+// Global Commands:
+// The framework automatically handles global commands like 'help', 'exit', and 'quit'
+// across all stages, providing a consistent user experience. Auto-completion dynamically
+// updates based on the active Stage and these global commands.
+//
+// Example:
+//
+//	type RootStage struct {
+//	    termapp.BaseStage
+//	}
+//
+//	func (s *RootStage) Prompt() string { return "root> " }
+//	func (s *RootStage) Commands() map[string]termapp.Command {
+//	    return map[string]termapp.Command{
+//	        "hello": {
+//	            Description: "Prints a greeting",
+//	            Handler: func(app *termapp.App, args []string) error {
+//	                fmt.Println("Hello, World!")
+//	                return nil
+//	            },
+//	        },
+//	    }
+//	}
+//
+//	func main() {
+//	    app := termapp.NewApp(&RootStage{})
+//	    app.Run()
+//	}
 package termapp
 
 import (
