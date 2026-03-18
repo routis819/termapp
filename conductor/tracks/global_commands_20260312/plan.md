@@ -1,13 +1,13 @@
 # Implementation Plan: Global Commands (Help/Exit)
 
-## Phase 1: Global Command Interception
-- [x] Task: Implement `Help` handler in `App.Run`.
-    - [x] Task: Write Tests: Create `app_test.go` (if not present/adequate) and verify `help` command triggers expected output.
-    - [x] Task: Implement: Update `App.Run` loop to intercept `help` before stage-specific commands.
-- [x] Task: Implement `Exit` handler in `App.Run`.
-    - [x] Task: Write Tests: Verify `exit` command terminates the loop.
-    - [x] Task: Implement: Add logic to handle `exit` and `quit`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Global Command Interception' (Protocol in workflow.md)
+## Phase 1: Global Command Interception [checkpoint: 3831fe0]
+- [x] Task: Implement `Help` handler in `App.Run`. (12f79c2)
+    - [x] Task: Write Tests: Create `app_test.go` (if not present/adequate) and verify `help` command triggers expected output. (12f79c2)
+    - [x] Task: Implement: Update `App.Run` loop to intercept `help` before stage-specific commands. (12f79c2)
+- [x] Task: Implement `Exit` handler in `App.Run`. (12f79c2)
+    - [x] Task: Write Tests: Verify `exit` command terminates the loop. (12f79c2)
+    - [x] Task: Implement: Add logic to handle `exit` and `quit`. (12f79c2)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Global Command Interception' (3831fe0)
 
 ## Phase 2: Refinement and Auto-completion
 - [x] Task: Add Global Commands to Auto-completer.
