@@ -10,9 +10,9 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Test Infrastructure and Basic Loop Tests' (0e897a4)
 
 ## Phase 2: Lifecycle and Termination Tests
-- [ ] Task: Verify lifecycle hooks are called during the `Run` loop.
-    - [ ] Task: Write Tests: Check if `OnEnter` of the root stage is called.
-    - [ ] Task: Implement: Update mock stage to record hook calls.
+- [x] Task: Verify lifecycle hooks are called during the `Run` loop. (e9fc934)
+    - [x] Task: Write Tests: Check if `OnEnter` of the root stage is called. (e9fc934)
+    - [x] Task: Implement: Update mock stage to record hook calls. (e9fc934)
 - [ ] Task: Test application termination.
     - [ ] Task: Write Tests: Verify `exit` command and `io.EOF` terminate the loop.
     - [ ] Task: Implement: Provide terminating input in tests.
