@@ -54,6 +54,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"unicode"
 
 	"github.com/peterh/liner"
 )
@@ -82,6 +83,8 @@ func (s *BaseStage) OnResult(app *App, result any) error { return nil }
 type Command struct {
 	Description string
 	Handler     func(app *App, args []string) error
+	// Completer provides dynamic completion candidates for the command's arguments.
+	Completer func(app *App, args []string) []string
 }
 
 // CommandInputter defines the operations for command-line input.
@@ -282,23 +285,69 @@ func (a *App) Run() error {
 
 // Completer provides the default tab-completion logic for the application.
 // It suggests global commands followed by commands from the active stage.
+// If a command is identified and has a custom Completer, it delegates argument completion.
 func (a *App) Completer(line string) []string {
 	curr := a.Current()
 	var suggestions []string
 
-	for name := range a.Globals {
-		if strings.HasPrefix(name, strings.ToLower(line)) {
-			suggestions = append(suggestions, name)
-		}
-	}
+	// Split the line to see if we are completing a command or its arguments
+	fields := strings.Fields(line)
+	hasTrailingSpace := len(line) > 0 && unicode.IsSpace(rune(line[len(line)-1]))
 
-	if curr != nil {
-		for name := range curr.Commands() {
-			if strings.HasPrefix(name, strings.ToLower(line)) {
+	// Case 1: Completing the command itself (first token, no trailing space)
+	if len(fields) == 0 || (len(fields) == 1 && !hasTrailingSpace) {
+		prefix := ""
+		if len(fields) == 1 {
+			prefix = strings.ToLower(fields[0])
+		}
+
+		for name := range a.Globals {
+			if strings.HasPrefix(name, prefix) {
 				suggestions = append(suggestions, name)
 			}
 		}
+
+		if curr != nil {
+			for name := range curr.Commands() {
+				if strings.HasPrefix(name, prefix) {
+					suggestions = append(suggestions, name)
+				}
+			}
+		}
+		return suggestions
 	}
+
+	// Case 2: Completing arguments for a command
+	cmdName := strings.ToLower(fields[0])
+	var cmd Command
+	found := false
+
+	// Look in globals
+	if c, ok := a.Globals[cmdName]; ok {
+		cmd = c
+		found = true
+	} else if curr != nil {
+		// Look in stage commands
+		if c, ok := curr.Commands()[cmdName]; ok {
+			cmd = c
+			found = true
+		}
+	}
+
+	if found && cmd.Completer != nil {
+		args := fields[1:]
+		// If the line ends in a space, the user is starting a new argument
+		if hasTrailingSpace {
+			args = append(args, "")
+		}
+		cmdSuggestions := cmd.Completer(a, args)
+		for _, s := range cmdSuggestions {
+			// Join command name and the suggested argument
+			// Note: This is a simplified join. Real implementation should preserve original spacing.
+			suggestions = append(suggestions, cmdName+" "+s)
+		}
+	}
+
 	return suggestions
 }
 

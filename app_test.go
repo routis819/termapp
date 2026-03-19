@@ -13,18 +13,22 @@ import (
 // Mock stage
 type mockStage struct {
 	BaseStage
+	commands map[string]Command
 }
 
 func (m *mockStage) Prompt() string { return "> " }
 func (m *mockStage) Commands() map[string]Command {
-	return map[string]Command{
-		"testcmd": {
-			Description: "A test command",
-			Handler: func(app *App, args []string) error {
-				return nil
+	if m.commands == nil {
+		m.commands = map[string]Command{
+			"testcmd": {
+				Description: "A test command",
+				Handler: func(app *App, args []string) error {
+					return nil
+				},
 			},
-		},
+		}
 	}
+	return m.commands
 }
 
 type conflictStage struct {
@@ -221,6 +225,40 @@ func TestSetRemoveGlobal(t *testing.T) {
 	})
 	if !strings.Contains(output, "Unknown command: help") {
 		t.Errorf("Expected unknown command for help, got %q", output)
+	}
+}
+
+func TestCompleter_CommandSpecific(t *testing.T) {
+	app := NewApp(&mockStage{})
+
+	// Add a command with a custom completer to the stage
+	app.Current().Commands()["pick"] = Command{
+		Description: "Pick a color",
+		Handler:     func(app *App, args []string) error { return nil },
+		Completer: func(app *App, args []string) []string {
+			colors := []string{"red", "green", "blue"}
+			var suggestions []string
+			prefix := ""
+			if len(args) > 0 {
+				prefix = args[0]
+			}
+			for _, c := range colors {
+				if strings.HasPrefix(c, prefix) {
+					suggestions = append(suggestions, c)
+				}
+			}
+			return suggestions
+		},
+	}
+
+	// Test prefix matching the command-specific completer
+	// Input: "pick r" -> args: ["r"], partial token: "r"
+	// Expected suggestions: ["pick red"]
+	// (Note: The current Completer returns full lines)
+	suggestions := app.Completer("pick r")
+	expected := []string{"pick red"}
+	if !reflect.DeepEqual(suggestions, expected) {
+		t.Errorf("Expected %v, got %v", expected, suggestions)
 	}
 }
 
