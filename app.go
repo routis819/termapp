@@ -85,6 +85,8 @@ type Command struct {
 	Handler     func(app *App, args []string) error
 	// Completer provides dynamic completion candidates for the command's arguments.
 	Completer func(app *App, args []string) []string
+	// SubCommands for static hierarchical completion.
+	SubCommands map[string]Command
 }
 
 // CommandInputter defines the operations for command-line input.
@@ -285,66 +287,110 @@ func (a *App) Run() error {
 
 // Completer provides the default tab-completion logic for the application.
 // It suggests global commands followed by commands from the active stage.
-// If a command is identified and has a custom Completer, it delegates argument completion.
+// It supports hierarchical completion via SubCommands and dynamic completion via Completer.
 func (a *App) Completer(line string) []string {
+	full, partial, state := tokenizeForCompletion(line)
 	curr := a.Current()
-	var suggestions []string
 
-	// Split the line to see if we are completing a command or its arguments
-	fields := strings.Fields(line)
-	hasTrailingSpace := len(line) > 0 && unicode.IsSpace(rune(line[len(line)-1]))
+	// Initial set of commands to check
+	var candidates map[string]Command
+	if curr != nil {
+		candidates = curr.Commands()
+	}
 
-	// Case 1: Completing the command itself (first token, no trailing space)
-	if len(fields) == 0 || (len(fields) == 1 && !hasTrailingSpace) {
-		prefix := ""
-		if len(fields) == 1 {
-			prefix = strings.ToLower(fields[0])
-		}
+	// Traverse the command hierarchy as far as possible
+	var currentCmd *Command
+	var breadcrumbs []string
+	var cmdLevel int
 
-		for name := range a.Globals {
-			if strings.HasPrefix(name, prefix) {
-				suggestions = append(suggestions, name)
-			}
-		}
+	for i, token := range full {
+		found := false
+		tokenLower := strings.ToLower(token)
 
-		if curr != nil {
-			for name := range curr.Commands() {
-				if strings.HasPrefix(name, prefix) {
-					suggestions = append(suggestions, name)
+		if cmdLevel == i {
+			// Look in current candidates
+			if cmd, ok := candidates[tokenLower]; ok {
+				currentCmd = &cmd
+				candidates = cmd.SubCommands
+				breadcrumbs = append(breadcrumbs, token)
+				cmdLevel++
+				found = true
+			} else if i == 0 {
+				// Only check Globals for the first token
+				if cmd, ok := a.Globals[tokenLower]; ok {
+					currentCmd = &cmd
+					candidates = cmd.SubCommands
+					breadcrumbs = append(breadcrumbs, token)
+					cmdLevel++
+					found = true
 				}
 			}
 		}
-		return suggestions
-	}
 
-	// Case 2: Completing arguments for a command
-	cmdName := strings.ToLower(fields[0])
-	var cmd Command
-	found := false
-
-	// Look in globals
-	if c, ok := a.Globals[cmdName]; ok {
-		cmd = c
-		found = true
-	} else if curr != nil {
-		// Look in stage commands
-		if c, ok := curr.Commands()[cmdName]; ok {
-			cmd = c
-			found = true
+		if !found {
+			// This token is not part of the command hierarchy, it's an argument.
+			// We stop traversing subcommands, but we keep the token for reconstruction.
+			break
 		}
 	}
 
-	if found && cmd.Completer != nil {
-		args := fields[1:]
-		// If the line ends in a space, the user is starting a new argument
-		if hasTrailingSpace {
-			args = append(args, "")
+	var suggestions []string
+	prefix := strings.ToLower(partial)
+
+	// Reconstruct the base line up to the partial token.
+	// We MUST use the original tokens to preserve their formatting (quotes/spaces).
+	// For simplicity, we use the tokens returned by the tokenizer, but we need to
+	// be careful about quoting them if they contain spaces.
+	var baseBuilder strings.Builder
+	for _, token := range full {
+		if strings.Contains(token, " ") {
+			baseBuilder.WriteString("\"" + token + "\" ")
+		} else {
+			baseBuilder.WriteString(token + " ")
 		}
-		cmdSuggestions := cmd.Completer(a, args)
-		for _, s := range cmdSuggestions {
-			// Join command name and the suggested argument
-			// Note: This is a simplified join. Real implementation should preserve original spacing.
-			suggestions = append(suggestions, cmdName+" "+s)
+	}
+	baseLine := baseBuilder.String()
+
+	// Suggest subcommands
+	if len(full) == cmdLevel {
+		for name := range candidates {
+			if strings.HasPrefix(strings.ToLower(name), prefix) {
+				suggestions = append(suggestions, baseLine+name)
+			}
+		}
+	}
+
+	// If we are at a specific command, check its dynamic completer
+	if currentCmd != nil {
+		// Arguments to the command are everything after cmdLevel
+		args := full[cmdLevel:]
+		args = append(args, partial)
+
+		if currentCmd.Completer != nil {
+			cmdSuggestions := currentCmd.Completer(a, args)
+			for _, s := range cmdSuggestions {
+				if strings.HasPrefix(strings.ToLower(s), prefix) {
+					formatted := s
+					if state == StateInDoubleQuote {
+						formatted = "\"" + s + "\""
+					} else if state == StateInSingleQuote {
+						formatted = "'" + s + "'"
+					} else if strings.Contains(s, " ") {
+						// Auto-quote if it contains spaces and we are not in quotes
+						formatted = "\"" + s + "\""
+					}
+					suggestions = append(suggestions, baseLine+formatted)
+				}
+			}
+		}
+	}
+
+	// Also check Globals if we are at the root level
+	if len(full) == 0 {
+		for name := range a.Globals {
+			if strings.HasPrefix(strings.ToLower(name), prefix) {
+				suggestions = append(suggestions, name)
+			}
 		}
 	}
 
@@ -357,11 +403,48 @@ func (a *App) processCommand(input string) (bool, error) {
 		return false, nil
 	}
 
-	cmdName := strings.ToLower(tokens[0])
-	args := tokens[1:]
+	curr := a.Current()
+	var candidates map[string]Command
+	if curr != nil {
+		candidates = curr.Commands()
+	}
 
-	// Global commands
-	if cmd, ok := a.Globals[cmdName]; ok {
+	// Traverse the hierarchy to find the command to execute
+	var cmd *Command
+	var args []string
+
+	for i, token := range tokens {
+		tokenLower := strings.ToLower(token)
+		found := false
+
+		if i == 0 {
+			// Check globals only at root
+			if c, ok := a.Globals[tokenLower]; ok {
+				cmd = &c
+				candidates = c.SubCommands
+				found = true
+			}
+		}
+
+		if !found && candidates != nil {
+			if c, ok := candidates[tokenLower]; ok {
+				cmd = &c
+				candidates = c.SubCommands
+				found = true
+			}
+		}
+
+		if found {
+			// If we found a command, remaining tokens are potential arguments
+			// unless we find a deeper subcommand.
+			args = tokens[i+1:]
+		} else {
+			// Token not found in current candidates, it's an argument to the last found command
+			break
+		}
+	}
+
+	if cmd != nil {
 		err := cmd.Handler(a, args)
 		if err == ErrExit {
 			return true, nil
@@ -372,17 +455,7 @@ func (a *App) processCommand(input string) (bool, error) {
 		return false, nil
 	}
 
-	curr := a.Current()
-	if curr != nil {
-		if cmd, ok := curr.Commands()[cmdName]; ok {
-			if err := cmd.Handler(a, args); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			}
-			return false, nil
-		}
-	}
-
-	fmt.Printf("Unknown command: %s. Type 'help' if available.\n", cmdName)
+	fmt.Printf("Unknown command: %s. Type 'help' if available.\n", tokens[0])
 	return false, nil
 }
 
