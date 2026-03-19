@@ -5,7 +5,7 @@
 
 ## Core Dependencies
 - **github.com/peterh/liner**: A pure Go line-editing library. It is chosen for its simplicity and ease of implementing dynamic auto-completion.
-- **regexp**: Used for POSIX-compliant tokenization of command arguments.
+- **State-Aware Tokenizer**: A custom, granular parser implemented in `app.go` to handle hierarchical completion, argument parsing, and quoted strings (single/double) while tracking parser state.
 
 ## Design Patterns
 - **Stage Pattern**: Each app state is an implementation of a `Stage` interface.
