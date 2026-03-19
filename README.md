@@ -7,8 +7,8 @@ Traditional CLI libraries in Go often fall into two extremes:
 **termapp** bridges this gap. It provides a structured, "stage-based" approach to build interactive shells where:
 - Each screen or context is a self-contained **Stage**.
 - Navigation is handled via a **Back Stack** (Push/Pop).
-- **Auto-completion** is context-aware, automatically updating based on the active Stage.
-- **Command Dispatching** is simplified through declarative mapping.
+- **Auto-completion**: Context-aware, hierarchical (subcommands), and dynamic (argument suggestions). Correctly handles quoted strings.
+- **Command Dispatching**: Simplified through declarative mapping and nested subcommand support.
 ---
 ## 🏗 Design Architecture
 ### 1. The "Stage" Concept
@@ -45,6 +45,10 @@ type Stage interface {
 type Command struct {
     Description string
     Handler     func(app *App, args []string) error
+    // Completer provides dynamic completion candidates for the command's arguments.
+    Completer func(app *App, args []string) []string
+    // SubCommands for static hierarchical completion.
+    SubCommands map[string]Command
 }
 // App orchestrates the lifecycle and the interaction loop.
 type App struct {
@@ -56,6 +60,8 @@ type App struct {
 - [x] POSIX-compliant tokenization for command arguments.
 - [x] Centralized Stage/App architecture.
 - [x] Dynamic auto-completion provider.
+- [x] Hierarchical (nested) subcommand completion and execution.
+- [x] Quoted string support in completion and tokenization.
 - [x] Built-in "Help", "Exit", and "Quit" global command management.
 ## 📝 Usage Example (Mockup)
 ```go
