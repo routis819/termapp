@@ -386,6 +386,73 @@ func (a *App) processCommand(input string) (bool, error) {
 	return false, nil
 }
 
+// CompletionState represents the parser state for command-line completion.
+type CompletionState int
+
+const (
+	// StateNormal indicates the parser is between tokens or at a new token.
+	StateNormal CompletionState = iota
+	// StateInSingleQuote indicates the parser is inside a single-quoted string.
+	StateInSingleQuote
+	// StateInDoubleQuote indicates the parser is inside a double-quoted string.
+	StateInDoubleQuote
+)
+
+func tokenizeForCompletion(line string) ([]string, string, CompletionState) {
+	var full []string
+	var current strings.Builder
+	state := StateNormal
+	escaped := false
+
+	for _, r := range line {
+		if escaped {
+			current.WriteRune(r)
+			escaped = false
+			continue
+		}
+
+		if r == '\\' {
+			escaped = true
+			continue
+		}
+
+		switch state {
+		case StateNormal:
+			if r == '"' {
+				state = StateInDoubleQuote
+			} else if r == '\'' {
+				state = StateInSingleQuote
+			} else if unicode.IsSpace(r) {
+				if current.Len() > 0 {
+					full = append(full, current.String())
+					current.Reset()
+				}
+			} else {
+				current.WriteRune(r)
+			}
+		case StateInDoubleQuote:
+			if r == '"' {
+				full = append(full, current.String())
+				current.Reset()
+				state = StateNormal
+			} else {
+				current.WriteRune(r)
+			}
+		case StateInSingleQuote:
+			if r == '\'' {
+				full = append(full, current.String())
+				current.Reset()
+				state = StateNormal
+			} else {
+				current.WriteRune(r)
+			}
+		}
+	}
+
+	partial := current.String()
+	return full, partial, state
+}
+
 func tokenize(line string) []string {
 	var tokens []string
 	var currentToken strings.Builder
