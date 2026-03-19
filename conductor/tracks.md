@@ -13,5 +13,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [ ] **Track: Hierarchical Autocompletion with Quoted String Support**
 *Link: [./tracks/hierarchical_completion_20260319/](./tracks/hierarchical_completion_20260319/)*
 
-- [ ] **Track: Robust and Customizable Global Commands and Completion**
+- [x] **Track: Robust and Customizable Global Commands and Completion**
 *Link: [./tracks/customizable_globals_20260319/](./tracks/customizable_globals_20260319/)*

@@ -2,9 +2,11 @@ package termapp
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -25,6 +27,20 @@ func (m *mockStage) Commands() map[string]Command {
 	}
 }
 
+type conflictStage struct {
+	BaseStage
+}
+
+func (s *conflictStage) Prompt() string { return "> " }
+func (s *conflictStage) Commands() map[string]Command {
+	return map[string]Command{
+		"help": {
+			Description: "Conflicting help",
+			Handler:     func(app *App, args []string) error { return nil },
+		},
+	}
+}
+
 func captureStdout(f func()) string {
 	r, w, _ := os.Pipe()
 	oldStdout := os.Stdout
@@ -34,6 +50,21 @@ func captureStdout(f func()) string {
 
 	w.Close()
 	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	return buf.String()
+}
+
+func captureStderr(f func()) string {
+	r, w, _ := os.Pipe()
+	oldStderr := os.Stderr
+	os.Stderr = w
+
+	f()
+
+	w.Close()
+	os.Stderr = oldStderr
 
 	var buf bytes.Buffer
 	io.Copy(&buf, r)
@@ -50,10 +81,10 @@ func TestProcessCommand_Help(t *testing.T) {
 		}
 	})
 
-	if !bytes.Contains([]byte(output), []byte("Global commands:")) {
+	if !strings.Contains(output, "Global commands:") {
 		t.Errorf("Expected 'Global commands:' in output, got: %s", output)
 	}
-	if !bytes.Contains([]byte(output), []byte("testcmd")) {
+	if !strings.Contains(output, "testcmd") {
 		t.Errorf("Expected 'testcmd' in output, got: %s", output)
 	}
 }
@@ -68,7 +99,7 @@ func TestProcessCommand_HelpWithArgs(t *testing.T) {
 		}
 	})
 
-	if !bytes.Contains([]byte(output), []byte("Global commands:")) {
+	if !strings.Contains(output, "Global commands:") {
 		t.Errorf("Expected 'Global commands:' in output, got: %s", output)
 	}
 }
@@ -83,7 +114,7 @@ func TestProcessCommand_ExitAndQuit(t *testing.T) {
 		}
 	})
 
-	if !bytes.Contains([]byte(output), []byte("Exiting...")) {
+	if !strings.Contains(output, "Exiting...") {
 		t.Errorf("Expected 'Exiting...' in output, got: %s", output)
 	}
 
@@ -94,7 +125,7 @@ func TestProcessCommand_ExitAndQuit(t *testing.T) {
 		}
 	})
 
-	if !bytes.Contains([]byte(output), []byte("Exiting...")) {
+	if !strings.Contains(output, "Exiting...") {
 		t.Errorf("Expected 'Exiting...' in output, got: %s", output)
 	}
 }
@@ -103,24 +134,24 @@ func TestCompleter(t *testing.T) {
 	app := NewApp(&mockStage{})
 
 	// Test prefix matching global commands
-	suggestions := app.completer("he")
+	suggestions := app.Completer("he")
 	if !reflect.DeepEqual(suggestions, []string{"help"}) {
 		t.Errorf("Expected [help], got %v", suggestions)
 	}
 
-	suggestions = app.completer("ex")
+	suggestions = app.Completer("ex")
 	if !reflect.DeepEqual(suggestions, []string{"exit"}) {
 		t.Errorf("Expected [exit], got %v", suggestions)
 	}
 
 	// Test prefix matching stage commands
-	suggestions = app.completer("te")
+	suggestions = app.Completer("te")
 	if !reflect.DeepEqual(suggestions, []string{"testcmd"}) {
 		t.Errorf("Expected [testcmd], got %v", suggestions)
 	}
 
 	// Empty input should suggest all
-	suggestions = app.completer("")
+	suggestions = app.Completer("")
 	expected := []string{"help", "exit", "quit", "testcmd"}
 
 	for _, exp := range expected {
@@ -134,6 +165,62 @@ func TestCompleter(t *testing.T) {
 		if !found {
 			t.Errorf("Expected %s in suggestions, got %v", exp, suggestions)
 		}
+	}
+}
+
+func TestValidateCommands(t *testing.T) {
+	app := NewApp(&mockStage{})
+
+	stderr := captureStderr(func() {
+		app.Push(&conflictStage{})
+	})
+
+	if !strings.Contains(stderr, "Warning: Stage command \"help\" conflicts") {
+		t.Errorf("Expected conflict warning in stderr, got: %q", stderr)
+	}
+}
+
+func TestSetRemoveGlobal(t *testing.T) {
+	app := NewApp(&mockStage{})
+
+	// Test SetGlobal
+	app.SetGlobal("greet", Command{
+		Description: "Greets user",
+		Handler: func(app *App, args []string) error {
+			fmt.Print("Hello!")
+			return nil
+		},
+	})
+
+	output := captureStdout(func() {
+		app.processCommand("greet")
+	})
+	if output != "Hello!" {
+		t.Errorf("Expected 'Hello!', got %q", output)
+	}
+
+	// Test override
+	app.SetGlobal("help", Command{
+		Description: "Custom help",
+		Handler: func(app *App, args []string) error {
+			fmt.Print("Custom Help Output")
+			return nil
+		},
+	})
+	output = captureStdout(func() {
+		app.processCommand("help")
+	})
+	if output != "Custom Help Output" {
+		t.Errorf("Expected 'Custom Help Output', got %q", output)
+	}
+
+	// Test RemoveGlobal
+	app.RemoveGlobal("help")
+	output = captureStdout(func() {
+		app.processCommand("help")
+	})
+	if !strings.Contains(output, "Unknown command: help") {
+		t.Errorf("Expected unknown command for help, got %q", output)
 	}
 }
 

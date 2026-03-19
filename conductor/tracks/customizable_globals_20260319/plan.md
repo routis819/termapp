@@ -1,40 +1,40 @@
 # Implementation Plan: Robust and Customizable Global Commands and Completion
 
 ## Phase 1: Data Structure & App Initialization
-1.  **Modify `App` struct**:
+1.  **Modify `App` struct**: [DONE]
     -   Add `Globals map[string]Command`.
-2.  **Update `NewApp`**:
+2.  **Update `NewApp`**: [DONE]
     -   Initialize `Globals` with default handlers for `help`, `exit`, and `quit`.
     -   Ensure these defaults use the same behavior as currently implemented.
-3.  **Refactor `processCommand`**:
+3.  **Refactor `processCommand`**: [DONE]
     -   Replace the hardcoded `switch` statement with a lookup in `a.Globals`.
 
 ## Phase 2: Refactoring Completer
-1.  **Refactor `completer` method**:
+1.  **Refactor `completer` method**: [DONE]
     -   Instead of hardcoded strings, iterate over `a.Globals` to generate suggestions.
-2.  **Expose Default Completer (Optional but Recommended)**:
-    -   Provide a public method `DefaultCompleter(line string) []string` that can be called by custom completers.
+2.  **Expose Default Completer (Optional but Recommended)**: [DONE]
+    -   Provide a public method `DefaultCompleter(line string) []string` (Renamed to `Completer`) that can be called by custom completers.
 
 ## Phase 3: Validation & Conflict Detection
-1.  **Implement `validateCommands(stage Stage)`**:
+1.  **Implement `validateCommands(stage Stage)`**: [DONE]
     -   Check for name collisions between `stage.Commands()` and `a.Globals`.
-2.  **Integrate into Lifecycle**:
+2.  **Integrate into Lifecycle**: [DONE]
     -   Call `validateCommands` during `Push` and initial `Run`.
-    -   Decide on behavior (warning or error) if a conflict is found.
+    -   Decide on behavior (warning or error) if a conflict is found (WARNING selected).
 
 ## Phase 4: Customization API
-1.  **Add `SetGlobal(name string, cmd Command)`**:
+1.  **Add `SetGlobal(name string, cmd Command)`**: [DONE]
     -   Allow users to add or override global commands.
-2.  **Add `RemoveGlobal(name string)`**:
+2.  **Add `RemoveGlobal(name string)`**: [DONE]
     -   Allow users to remove global commands.
 
 ## Phase 5: Verification & Examples
-1.  **Update `app_test.go`**:
+1.  **Update `app_test.go`**: [DONE]
     -   Verify that default globals still work.
     -   Verify that overriding a global works.
     -   Verify that removing a global works.
     -   Verify that validation detects conflicts.
-2.  **New Example**: `examples/custom_globals.go`
+2.  **New Example**: `examples/custom_globals.go` [DONE]
     -   Showcase how to customize the "shell" experience.
 
 ## Verification

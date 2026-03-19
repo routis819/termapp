@@ -94,9 +94,13 @@ type CommandInputter interface {
 
 // App orchestrates the lifecycle and the input loop.
 type App struct {
-	line  CommandInputter
-	stack []Stage
+	line    CommandInputter
+	stack   []Stage
+	Globals map[string]Command
 }
+
+// ErrExit is a special error that signals the application should terminate.
+var ErrExit = fmt.Errorf("exit")
 
 // NewApp creates a new termapp application with an initial stage.
 func NewApp(root Stage) *App {
@@ -104,22 +108,83 @@ func NewApp(root Stage) *App {
 	l.SetCtrlCAborts(true)
 	l.SetTabCompletionStyle(liner.TabPrints)
 
-	return &App{
+	app := &App{
 		line:  l,
 		stack: []Stage{root},
 	}
+	app.initGlobals()
+	return app
 }
 
 // NewAppWithInputter creates a new termapp application with a custom inputter.
 func NewAppWithInputter(root Stage, inputter CommandInputter) *App {
-	return &App{
+	app := &App{
 		line:  inputter,
 		stack: []Stage{root},
+	}
+	app.initGlobals()
+	return app
+}
+
+func (a *App) initGlobals() {
+	a.Globals = map[string]Command{
+		"help": {
+			Description: "Show this help message",
+			Handler: func(app *App, args []string) error {
+				fmt.Println("Global commands:")
+				for name, cmd := range app.Globals {
+					fmt.Printf("  %s - %s\n", name, cmd.Description)
+				}
+				if curr := app.Current(); curr != nil && len(curr.Commands()) > 0 {
+					fmt.Println("\nStage commands:")
+					for name, cmd := range curr.Commands() {
+						fmt.Printf("  %s - %s\n", name, cmd.Description)
+					}
+				}
+				return nil
+			},
+		},
+		"exit": {
+			Description: "Exit the application",
+			Handler: func(app *App, args []string) error {
+				fmt.Println("Exiting...")
+				return ErrExit
+			},
+		},
+		"quit": {
+			Description: "Exit the application",
+			Handler: func(app *App, args []string) error {
+				fmt.Println("Exiting...")
+				return ErrExit
+			},
+		},
+	}
+}
+
+// SetGlobal adds or overrides a global command.
+func (a *App) SetGlobal(name string, cmd Command) {
+	a.Globals[strings.ToLower(name)] = cmd
+}
+
+// RemoveGlobal removes a global command.
+func (a *App) RemoveGlobal(name string) {
+	delete(a.Globals, strings.ToLower(name))
+}
+
+func (a *App) validateCommands(s Stage) {
+	if s == nil {
+		return
+	}
+	for name := range s.Commands() {
+		if _, ok := a.Globals[strings.ToLower(name)]; ok {
+			fmt.Fprintf(os.Stderr, "Warning: Stage command %q conflicts with a global command. Global command takes precedence.\n", name)
+		}
 	}
 }
 
 // Push adds a new stage to the stack.
 func (a *App) Push(s Stage) error {
+	a.validateCommands(s)
 	if current := a.Current(); current != nil {
 		if err := current.OnExit(a); err != nil {
 			return err
@@ -178,13 +243,14 @@ func (a *App) Run() error {
 
 	// Initial OnEnter for the root stage
 	if root := a.Current(); root != nil {
+		a.validateCommands(root)
 		if err := root.OnEnter(a); err != nil {
 			return fmt.Errorf("failed to enter root stage: %w", err)
 		}
 	}
 
 	// Configure dynamic completion
-	a.line.SetCompleter(a.completer)
+	a.line.SetCompleter(a.Completer)
 
 	for {
 		curr := a.Current()
@@ -214,14 +280,15 @@ func (a *App) Run() error {
 	return nil
 }
 
-func (a *App) completer(line string) []string {
+// Completer provides the default tab-completion logic for the application.
+// It suggests global commands followed by commands from the active stage.
+func (a *App) Completer(line string) []string {
 	curr := a.Current()
 	var suggestions []string
 
-	globalCmds := []string{"help", "exit", "quit"}
-	for _, cmd := range globalCmds {
-		if strings.HasPrefix(cmd, strings.ToLower(line)) {
-			suggestions = append(suggestions, cmd)
+	for name := range a.Globals {
+		if strings.HasPrefix(name, strings.ToLower(line)) {
+			suggestions = append(suggestions, name)
 		}
 	}
 
@@ -244,26 +311,19 @@ func (a *App) processCommand(input string) (bool, error) {
 	cmdName := strings.ToLower(tokens[0])
 	args := tokens[1:]
 
-	curr := a.Current()
-
 	// Global commands
-	switch cmdName {
-	case "help":
-		fmt.Println("Global commands:")
-		fmt.Println("  help - Show this help message")
-		fmt.Println("  exit, quit - Exit the application")
-		if curr != nil && len(curr.Commands()) > 0 {
-			fmt.Println("\nStage commands:")
-			for name, cmd := range curr.Commands() {
-				fmt.Printf("  %s - %s\n", name, cmd.Description)
-			}
+	if cmd, ok := a.Globals[cmdName]; ok {
+		err := cmd.Handler(a, args)
+		if err == ErrExit {
+			return true, nil
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		}
 		return false, nil
-	case "exit", "quit":
-		fmt.Println("Exiting...")
-		return true, nil
 	}
 
+	curr := a.Current()
 	if curr != nil {
 		if cmd, ok := curr.Commands()[cmdName]; ok {
 			if err := cmd.Handler(a, args); err != nil {
